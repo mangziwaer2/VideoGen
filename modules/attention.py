@@ -28,11 +28,10 @@ class AttnBlock(nn.Module):
         v = self.activation(self.v(x))
 
         x1,_=self.attn(q,k,v)
+        x=self.layernorm(x1+x)
 
-        x2=self.layernorm(x1+x)
+        x=self.drop_out(self.activation(self.fc(x)))
 
-        x3=self.drop_out(self.activation(self.fc(x2)))
+        x=self.layernorm_out(x)
 
-        x4=self.layernorm_out(x3)
-
-        return x4
+        return x

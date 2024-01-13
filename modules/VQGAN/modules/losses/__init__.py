@@ -1,2 +1,2 @@
-from taming.modules.losses.vqperceptual import DummyLoss
+from modules.VQGAN.modules.losses.vqperceptual import DummyLoss
 

@@ -32,20 +32,17 @@ class CompletionModel(nn.Module):
 
         return text_token,vid_token,qloss
 
-    def decode(self,text_token,vid_token,memory_length=8):
+    def decode(self,text_token,vid_token,memory_length=4):
         SPAN_token = self.text_encoder.embedding.weight[self.text_encoder.tokenizer.dictionary.token2id["<SPAN>"]].unsqueeze(0).repeat(vid_token.shape[1],1).unsqueeze(0)
         vid_token_SPAN=torch.cat([vid_token,SPAN_token],dim=0)
         token=self.vid_model.encode(text_token,vid_token_SPAN,self.img_token_len)
-
+        mf=self.next_state_model(token)
         new_token=token[-self.img_token_len:]
         new_token=self.vid_model.decode(new_token)
         img_token=new_token.view(self.img_token_shape[0],self.img_token_shape[1],new_token.shape[1],self.embed_dim)#h w b c
         img_token=img_token.permute(2,3,0,1)#b c h w
         img=self.vqmodel.decode(img_token)
         new_vid_token=torch.cat([vid_token,new_token],dim=0)
-
-        mf=self.next_state_model(token)
-
         new_vid_token=new_vid_token[-self.img_token_len*memory_length:]
 
         return img,new_vid_token,mf
