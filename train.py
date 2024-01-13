@@ -59,135 +59,135 @@ for e in range(epoch):
         step_update=False
 
     loss_ave=0
-    with model.train():
-        for i,(description,video_path) in enumerate(train_loader):
-            text=tokenizer.encode(description)
-            cap=cv2.VideoCapture(video_path[0])
-            frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    model.train()
+    for i,(description,video_path) in enumerate(train_loader):
+        text=tokenizer.encode(description)
+        cap=cv2.VideoCapture(video_path[0])
+        frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            success, img = cap.read()
-            img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
-            text=torch.LongTensor(text).to(device)
-            mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
+        success, img = cap.read()
+        img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
+        text=torch.LongTensor(text).to(device)
+        mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
 
-            text_token,vid_token,qloss=model.encode(text,img)
+        text_token,vid_token,qloss=model.encode(text,img)
 
-            total_losses=[]
-            frame_idx=0
-            while True: #计算处理视频最后一帧时mf为0
-                frame_idx+=1
-                if frame_idx==frame_length-1:
-                    mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
-                    print("最后一帧")
-                else:
-                    print("帧",frame_idx,"/",frame_length)
+        total_losses=[]
+        frame_idx=0
+        while True: #计算处理视频最后一帧时mf为0
+            frame_idx+=1
+            if frame_idx==frame_length-1:
+                mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
+                print("最后一帧")
+            else:
+                print("帧",frame_idx,"/",frame_length)
 
-                success,img=cap.read()
+            success,img=cap.read()
 
-                if not success:
-                    print("结束")
-                    break
-                img=cv2.resize(img,(64,128))
-                img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
-                pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
+            if not success:
+                print("结束")
+                break
+            img=cv2.resize(img,(64,128))
+            img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
+            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
 
-                mf_loss=mf_criterion(mf,pred_mf)
+            mf_loss=mf_criterion(mf,pred_mf)
 
-                if optimizer_idx == 0:
-                    # autoencode
-                    loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
-                                                    last_layer=model.vqmodel.get_last_layer(), split="train")
+            if optimizer_idx == 0:
+                # autoencode
+                loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
+                                                last_layer=model.vqmodel.get_last_layer(), split="train")
 
-                if optimizer_idx == 1:
-                    # discriminator
-                    loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
-                                                    last_layer=model.vqmodel.get_last_layer(), split="train")
+            if optimizer_idx == 1:
+                # discriminator
+                loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
+                                                last_layer=model.vqmodel.get_last_layer(), split="train")
 
-                total_losses.append(loss)
-                print("loss:",loss)
+            total_losses.append(loss)
+            print("loss:",loss)
 
-                if step_update:
+            if step_update:
 
-                    if optimizer_idx==0:
-                        optimizer_ae.zero_grad()
-                        loss.backward()
-                        optimizer_ae.step()
-
-                    if optimizer_idx==1:
-                        optimizer_disc.zero_grad()
-                        loss.backward()
-                        optimizer_disc.step()
-
-            if not step_update:
-                loss=sum(total_losses)/len(total_losses)
-                loss_ave+=loss.item()
-                if optimizer_idx == 0:
+                if optimizer_idx==0:
                     optimizer_ae.zero_grad()
                     loss.backward()
                     optimizer_ae.step()
 
-                if optimizer_idx == 1:
+                if optimizer_idx==1:
                     optimizer_disc.zero_grad()
                     loss.backward()
                     optimizer_disc.step()
 
-        print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
+        if not step_update:
+            loss=sum(total_losses)/len(total_losses)
+            loss_ave+=loss.item()
+            if optimizer_idx == 0:
+                optimizer_ae.zero_grad()
+                loss.backward()
+                optimizer_ae.step()
 
-    with model.eval():
-        loss_ave=0
-        for i,(description,video_path) in enumerate(test_loader):
-            text=tokenizer.encode(description)
-            cap=cv2.VideoCapture(video_path[0])
-            frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if optimizer_idx == 1:
+                optimizer_disc.zero_grad()
+                loss.backward()
+                optimizer_disc.step()
 
-            success, img = cap.read()
-            img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
-            text=torch.LongTensor(text).to(device)
-            mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
+    print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
 
-            text_token,vid_token,qloss=model.encode(text,img)
+    model.eval()
+    loss_ave=0
+    for i,(description,video_path) in enumerate(test_loader):
+        text=tokenizer.encode(description)
+        cap=cv2.VideoCapture(video_path[0])
+        frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            total_losses=[]
-            frame_idx=0
-            while True: #计算处理视频最后一帧时mf为0
-                frame_idx+=1
-                if frame_idx==frame_length-1:
-                    mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
+        success, img = cap.read()
+        img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
+        text=torch.LongTensor(text).to(device)
+        mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
 
-                success,img=cap.read()
-                if not success:
-                    break
+        text_token,vid_token,qloss=model.encode(text,img)
 
-                img=cv2.resize(img,(64,128))
-                img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
-                pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
+        total_losses=[]
+        frame_idx=0
+        while True: #计算处理视频最后一帧时mf为0
+            frame_idx+=1
+            if frame_idx==frame_length-1:
+                mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
 
-                mf_loss=mf_criterion(mf,pred_mf)
+            success,img=cap.read()
+            if not success:
+                break
 
-                if optimizer_idx == 0:
-                    # autoencode
-                    loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
-                                                    last_layer=model.vqmodel.get_last_layer(), split="train")
+            img=cv2.resize(img,(64,128))
+            img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
+            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
 
-                if optimizer_idx == 1:
-                    # discriminator
-                    loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
-                                                    last_layer=model.vqmodel.get_last_layer(), split="train")
+            mf_loss=mf_criterion(mf,pred_mf)
 
-                total_losses.append(loss)
+            if optimizer_idx == 0:
+                # autoencode
+                loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
+                                                last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            loss_ave+=sum(total_losses)/len(total_losses)
+            if optimizer_idx == 1:
+                # discriminator
+                loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
+                                                last_layer=model.vqmodel.get_last_layer(), split="train")
 
-        loss_ave/=len(test_loader)
+            total_losses.append(loss)
 
-        if optimizer_idx==0:
-            schduler_ae.step(loss_ave)
+        loss_ave+=sum(total_losses)/len(total_losses)
+
+    loss_ave/=len(test_loader)
+
+    if optimizer_idx==0:
+        schduler_ae.step(loss_ave)
 
 
-        if optimizer_idx==1:
-            schduler_disc.step(loss_ave)
+    if optimizer_idx==1:
+        schduler_disc.step(loss_ave)
 
-        print(F"{e}/{epoch},eval_loss:{loss_ave}")
+    print(F"{e}/{epoch},eval_loss:{loss_ave}")
 
 
 
