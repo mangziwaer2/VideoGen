@@ -18,7 +18,7 @@ def get_positional_encoding(d_model: int, max_len: int = 5000):
 
 
 class TextEncoder(nn.Module):
-    def __init__(self,tokenizer:Tokenizer,embed_dim=256,max_len=2048,dim=[1,1,2,2,4,4]):
+    def __init__(self,tokenizer:Tokenizer,embed_dim=256,max_len=2048,dim=[1,1,2,2,4]):
 
         super().__init__()
         self.embed_dim=embed_dim

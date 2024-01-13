@@ -25,7 +25,7 @@ class VidEmbeddingWithPosition(nn.Module):
         return vid_token
 
 class VideoModel(nn.Module):
-    def __init__(self, in_c=3,out_c=3,embed_dim=256, max_len=2048, enc_dim=[1, 1, 2, 2, 4],dec_dim=[4,2,2,1,1]):
+    def __init__(self, in_c=3,out_c=3,embed_dim=256, max_len=2048, enc_dim=[1, 1, 2, 4],dec_dim=[4,2,1,1]):
         super(VideoModel, self).__init__()
 
         self.vid_embedding=VidEmbeddingWithPosition(max_len=max_len,embed_dim=embed_dim)
