@@ -46,7 +46,7 @@ class CompletionModel(nn.Module):
 
         mf=self.next_state_model(token)
 
-        # new_vid_token=new_vid_token[-self.img_token_len:]
+        new_vid_token=new_vid_token[-self.img_token_len:]
 
         return img,new_vid_token,mf
 
