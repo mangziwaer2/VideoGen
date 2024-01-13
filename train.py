@@ -50,8 +50,6 @@ optimizer_disc = torch.optim.Adam(loss_fn.discriminator.parameters(),
 schduler_ae=scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_ae, mode='min', factor=0.1, patience=2)
 schduler_disc=scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_disc, mode='min', factor=0.1, patience=2)
 
-torch.save(model.state_dict(),"./model_test")
-
 for e in range(epoch):
     optimizer_idx+=1
     optimizer_idx%=2
@@ -132,6 +130,8 @@ for e in range(epoch):
                 optimizer_disc.step()
 
     print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
+
+    torch.save(model.state_dict(), f"./model_{e}.ckpt")
 
     model.eval()
     loss_ave=0
