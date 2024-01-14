@@ -2,9 +2,9 @@ import cv2
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from modules.VQGAN.modules.diffusionmodules.model import Encoder, Decoder
-from modules.VQGAN.modules.losses.vqperceptual import VQLPIPSWithDiscriminator
-from modules.VQGAN.modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
+from .modules.diffusionmodules.model import Encoder, Decoder
+from .modules.losses.vqperceptual import VQLPIPSWithDiscriminator
+from .modules.vqvae.quantize import VectorQuantizer2 as VectorQuantizer
 
 
 
