@@ -43,8 +43,10 @@ class CompletionModel(nn.Module):
         img_token=img_token.permute(2,3,0,1)#b c h w
         img=self.vqmodel.decode(img_token)
         new_vid_token=torch.cat([vid_token,new_token],dim=0)
+        temp=new_vid_token
         new_vid_token=new_vid_token[-self.img_token_len*memory_length:]
-
+        temp.detach()
+        del temp
         return img,new_vid_token,mf
 
 if __name__ == '__main__':

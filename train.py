@@ -78,7 +78,7 @@ for e in range(epoch):
                 mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
                 print("最后一帧")
             else:
-                print("帧",frame_idx,"/",frame_length)
+                print("帧",frame_idx,"/",frame_length,vid_token.shape)
 
             success,img=cap.read()
 
