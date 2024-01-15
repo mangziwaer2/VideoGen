@@ -26,6 +26,19 @@ def cut_vid2img(vid_path):
 
 if __name__ == '__main__':
 
-    path="../datasets/vid/1/video.mp4"
+    # path="../datasets/vid/1/video.mp4"
+    #
+    # cut_vid2img(path)
 
-    cut_vid2img(path)
+    path="../datasets/vid/2/frames"
+
+    names=os.listdir(path)
+
+    i=0
+
+    for name in names:
+        img=cv2.imread(os.path.join(path,name))
+
+        cv2.imwrite(os.path.join(path,f"{i:05d}.png"),img)
+
+        i+=1
