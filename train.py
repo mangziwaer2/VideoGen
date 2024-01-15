@@ -100,7 +100,8 @@ for e in range(epoch):
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
             total_losses_ae.append(loss_ae)
-            total_losses_disc.append(loss_disc)
+            if loss_disc!=0:
+                total_losses_disc.append(loss_disc)
 
             if step_update:
                 optimizer_ae.zero_grad()
@@ -114,8 +115,9 @@ for e in range(epoch):
         if not step_update:
             loss_ae=sum(total_losses_ae)/len(total_losses_ae)
             loss_ae_ave+=loss_ae.item()
-            loss_disc=sum(total_losses_disc)/len(total_losses_disc)
-            loss_disc_ave+=loss_disc.item()
+            if len(total_losses_disc)!=0:
+                loss_disc=sum(total_losses_disc)/len(total_losses_disc)
+                loss_disc_ave+=loss_disc.item()
 
             optimizer_ae.zero_grad()
             loss_ae.backward()

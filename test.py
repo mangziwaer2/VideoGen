@@ -14,6 +14,7 @@ vid_path="datasets/vid/1/video.mp4"
 cap=cv2.VideoCapture(vid_path)
 
 success,img=cap.read()
+img=cv2.imread("./datasets/vid/1/frames/00030.png")
 img=torch.Tensor(img).permute(2,0,1).unsqueeze(0)
 print("input_shape:",img.shape)
 text=tokenizer.encode(text)
