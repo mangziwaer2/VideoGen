@@ -86,7 +86,7 @@ for e in range(epoch):
                 break
 
             img = cv2.imread(video_path_sub)
-            img=cv2.resize(img,(64,128))
+            img=cv2.resize(img,(128,64))
             img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
             pred_img,vid_token,pred_mf=model.decode(text_token,vid_token,memory_length=8)
 
