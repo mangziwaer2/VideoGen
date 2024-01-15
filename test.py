@@ -18,7 +18,7 @@ img=torch.Tensor(img).permute(2,0,1).unsqueeze(0)
 text=tokenizer.encode(text)
 text=torch.LongTensor(text)
 
-text_token,vid_token=comp_model.encode(text,img)
+text_token,vid_token,_=comp_model.encode(text,img)
 
 print("text:",text_token.shape)
 print("vid:",vid_token.shape)
@@ -28,4 +28,11 @@ print("img:",img.shape)
 print("new_vid:",new_vid_token.shape)
 print(mf)
 
-torch.save(comp_model.state_dict(),"./model_test")
+frame_idx=0
+while True:
+    frame_idx+=1
+
+    img,vid_token,mf=comp_model.decode(text_token,vid_token)
+
+    print(frame_idx)
+    print(vid_token.shape)

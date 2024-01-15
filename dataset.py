@@ -31,7 +31,7 @@ class Dataset(torch.utils.data.Dataset):
                     with open(d_path,"r",encoding="utf-8") as f:
                         content=f.read()
                         descriptions.append(content)
-                if(data.endswith(".mp4")):
+                if(data=="frames"):
                     video_paths.append(d_path)
 
         self.descriptions=descriptions

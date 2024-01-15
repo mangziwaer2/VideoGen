@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import torch
 from torch import nn
@@ -25,7 +27,7 @@ print("device:",device)
 
 tokenizer=Tokenizer(dictionary_path=dictionary_path)
 
-model=CompletionModel(tokenizer,embed_dim=512,max_len=2048).to(device)
+model=CompletionModel(tokenizer,embed_dim=256,max_len=512).to(device)
 
 mf_criterion=nn.CrossEntropyLoss()
 loss_fn=vqperceptual.VQLPIPSWithDiscriminator(device=device)
@@ -60,10 +62,11 @@ for e in range(epoch):
     model.train()
     for i,(description,video_path) in enumerate(train_loader):
         text=tokenizer.encode(description)
-        cap=cv2.VideoCapture(video_path[0])
-        frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        success, img = cap.read()
+        frame_idx=0
+        video_path=video_path[0]
+        frame_length=len(os.listdir(video_path))//2
+        video_path_sub=os.path.join(video_path,F"{frame_idx:05d}.png")
+        img=cv2.imread(video_path_sub)
         img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
         text=torch.LongTensor(text).to(device)
         mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
@@ -71,23 +74,21 @@ for e in range(epoch):
         text_token,vid_token,qloss=model.encode(text,img)
 
         total_losses=[]
-        frame_idx=0
+
         while True: #计算处理视频最后一帧时mf为0
             frame_idx+=1
+            video_path_sub = os.path.join(video_path, F"{frame_idx:05d}.png")
+
             if frame_idx==frame_length-1:
                 mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
-                print("最后一帧")
-            else:
-                print("帧",frame_idx,"/",frame_length,vid_token.shape)
 
-            success,img=cap.read()
-
-            if not success:
-                print("结束")
+            if frame_idx==frame_length:
                 break
+
+            img = cv2.imread(video_path_sub)
             img=cv2.resize(img,(64,128))
             img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
-            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
+            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token,memory_length=8)
 
             mf_loss=mf_criterion(mf,pred_mf)
 
@@ -102,7 +103,6 @@ for e in range(epoch):
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
             total_losses.append(loss)
-            print("loss:",loss)
 
             if step_update:
 
@@ -131,7 +131,7 @@ for e in range(epoch):
 
     print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
 
-    torch.save(model.state_dict(), f"./model_{e}.ckpt")
+    torch.save(model.state_dict(), f"./models/model_{e}.ckpt")
 
     model.eval()
     loss_ave=0
