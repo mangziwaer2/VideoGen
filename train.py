@@ -27,7 +27,7 @@ print("device:",device)
 
 tokenizer=Tokenizer(dictionary_path=dictionary_path)
 
-model=CompletionModel(tokenizer,embed_dim=256,max_len=512).to(device)
+model=CompletionModel(tokenizer,embed_dim=512,max_len=2048).to(device)
 
 mf_criterion=nn.CrossEntropyLoss()
 loss_fn=vqperceptual.VQLPIPSWithDiscriminator(device=device)
@@ -178,13 +178,13 @@ for e in range(epoch):
 
         loss_ave+=sum(total_losses)/len(total_losses)
 
-    loss_ave/=len(test_loader)
-
-    if optimizer_idx==0:
-        schduler_ae.step(loss_ave)
-
-
-    if optimizer_idx==1:
-        schduler_disc.step(loss_ave)
-
-    print(F"{e}/{epoch},eval_loss:{loss_ave}")
+    # loss_ave/=len(test_loader)
+    #
+    # if optimizer_idx==0:
+    #     schduler_ae.step(loss_ave)
+    #
+    #
+    # if optimizer_idx==1:
+    #     schduler_disc.step(loss_ave)
+    #
+    # print(F"{e}/{epoch},eval_loss:{loss_ave}")

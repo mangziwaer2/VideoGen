@@ -27,7 +27,8 @@ class VidEmbeddingWithPosition(nn.Module):
 class VideoModel(nn.Module):
     def __init__(self, in_c=3,out_c=3,embed_dim=256, max_len=2048, enc_dim=[1, 2, 2],dec_dim=[2,2,1]):
         super(VideoModel, self).__init__()
-
+        self.enc_dim=enc_dim
+        self.dec_dim=dec_dim
         self.vid_embedding=VidEmbeddingWithPosition(max_len=max_len,embed_dim=embed_dim)
         self.embed_dim=embed_dim
         enc_block=nn.ModuleList()
