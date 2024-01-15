@@ -58,7 +58,8 @@ for e in range(epoch):
     if e>=epoch/2:
         step_update=False
 
-    loss_ave=0
+    loss_ae_ave=0
+    loss_disc_ave=0
     model.train()
     for i,(description,video_path) in enumerate(train_loader):
         text=tokenizer.encode(description)
@@ -73,8 +74,8 @@ for e in range(epoch):
 
         text_token,vid_token,qloss=model.encode(text,img)
 
-        total_losses=[]
-
+        total_losses_ae=[]
+        total_losses_disc=[]
         while True: #计算处理视频最后一帧时mf为0
             frame_idx+=1
             video_path_sub = os.path.join(video_path, F"{frame_idx:05d}.png")
@@ -92,49 +93,45 @@ for e in range(epoch):
 
             mf_loss=mf_criterion(mf,pred_mf)
 
-            if optimizer_idx == 0:
-                # autoencode
-                loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
+            loss_ae, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, 0, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            if optimizer_idx == 1:
-                # discriminator
-                loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
+            loss_disc, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,1, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            total_losses.append(loss)
+            total_losses_ae.append(loss_ae)
+            total_losses_disc.append(loss_disc)
 
             if step_update:
-
-                if optimizer_idx==0:
-                    optimizer_ae.zero_grad()
-                    loss.backward()
-                    optimizer_ae.step()
-
-                if optimizer_idx==1:
-                    optimizer_disc.zero_grad()
-                    loss.backward()
-                    optimizer_disc.step()
-
-        if not step_update:
-            loss=sum(total_losses)/len(total_losses)
-            loss_ave+=loss.item()
-            if optimizer_idx == 0:
                 optimizer_ae.zero_grad()
-                loss.backward()
+                loss_ae.backward()
                 optimizer_ae.step()
 
-            if optimizer_idx == 1:
                 optimizer_disc.zero_grad()
-                loss.backward()
+                loss_disc.backward()
                 optimizer_disc.step()
 
-    print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
+        if not step_update:
+            loss_ae=sum(total_losses_ae)/len(total_losses_ae)
+            loss_ae_ave+=loss_ae.item()
+            loss_disc=sum(total_losses_disc)/len(total_losses_disc)
+            loss_disc_ave+=loss_disc.item()
+
+            optimizer_ae.zero_grad()
+            loss_ae.backward()
+            optimizer_ae.step()
+
+            optimizer_disc.zero_grad()
+            loss_disc.backward()
+            optimizer_disc.step()
+
+    print(F"{e}/{epoch},train_loss_ae:{loss_ae_ave/len(train_loader)},train_loss_disc:{loss_disc_ave/len(train_loader)}")
 
     torch.save(model.state_dict(), f"./models/model_{e%4}.ckpt")
 
     model.eval()
-    loss_ave=0
+    loss_ae_ave=0
+    loss_disc_ave=0
     for i,(description,video_path) in enumerate(test_loader):
         text=tokenizer.encode(description)
         cap=cv2.VideoCapture(video_path[0])
@@ -147,7 +144,8 @@ for e in range(epoch):
 
         text_token,vid_token,qloss=model.encode(text,img)
 
-        total_losses=[]
+        total_losses_ae=[]
+        total_losses_disc=[]
         frame_idx=0
         while True: #计算处理视频最后一帧时mf为0
             frame_idx+=1
@@ -164,19 +162,18 @@ for e in range(epoch):
 
             mf_loss=mf_criterion(mf,pred_mf)
 
-            if optimizer_idx == 0:
-                # autoencode
-                loss, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, optimizer_idx, i,
+            loss_ae, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, 0, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            if optimizer_idx == 1:
-                # discriminator
-                loss, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,optimizer_idx, i,
+
+            loss_disc, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,1, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            total_losses.append(loss)
+            total_losses_ae.append(loss_ae)
+            total_losses_disc.append(loss_disc)
 
-        loss_ave+=sum(total_losses)/len(total_losses)
+        loss_ae_ave+=sum(total_losses_ae)/len(total_losses_ae)
+        loss_disc_ave+=sum(total_losses_disc)/len(total_losses_disc)
 
     # loss_ave/=len(test_loader)
     #
