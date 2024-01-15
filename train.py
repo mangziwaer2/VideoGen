@@ -131,7 +131,7 @@ for e in range(epoch):
 
     print(F"{e}/{epoch},train_loss:{loss_ave/len(train_loader)}")
 
-    torch.save(model.state_dict(), f"./models/model_{e}.ckpt")
+    torch.save(model.state_dict(), f"./models/model_{e%4}.ckpt")
 
     model.eval()
     loss_ave=0
