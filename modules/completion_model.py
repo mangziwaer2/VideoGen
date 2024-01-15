@@ -11,8 +11,8 @@ class CompletionModel(nn.Module):
     def __init__(self,tokenizer:Tokenizer,embed_dim=256,max_len=2048):
         super(CompletionModel, self).__init__()
         self.embed_dim=embed_dim
-        self.text_encoder=TextEncoder(tokenizer=tokenizer,embed_dim=embed_dim,max_len=max_len,dim=[1,1,2,2,4])
-        self.vid_model=VideoModel(embed_dim=embed_dim,max_len=max_len,enc_dim=[1,1,2,2,4],dec_dim=[4,2,2,1,1])
+        self.text_encoder=TextEncoder(tokenizer=tokenizer,embed_dim=embed_dim,max_len=max_len,dim=[1,1,2])
+        self.vid_model=VideoModel(embed_dim=embed_dim,max_len=max_len,enc_dim=[1,1,2],dec_dim=[2,1,1])
         self.vqmodel=VQModel(n_embed=8192,embed_dim=embed_dim)
         self.next_state_model=MLP(embed_dim=embed_dim*self.vid_model.enc_dim[-1], num_classes=2)
 
