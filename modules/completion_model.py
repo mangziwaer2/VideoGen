@@ -20,10 +20,8 @@ class CompletionModel(nn.Module):
         self.img_token_shape=None
 
     def encode(self, text, img):
-        print(img.shape)
         text_token=self.text_encoder(text)
         img_enc, qloss, _=self.vqmodel.encode(img)
-        print(img_enc.shape)
         token_num=img_enc.shape[-1]*img_enc.shape[-2]
         self.img_token_shape=[img_enc.shape[-1],img_enc.shape[-2]]
         self.img_token_len=token_num
