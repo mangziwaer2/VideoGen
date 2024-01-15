@@ -23,7 +23,7 @@ class CompletionModel(nn.Module):
         text_token=self.text_encoder(text)
         img_enc, qloss, _=self.vqmodel.encode(img)
         token_num=img_enc.shape[-1]*img_enc.shape[-2]
-        self.img_token_shape=[img_enc.shape[-1],img_enc.shape[-2]]
+        self.img_token_shape=[img_enc.shape[-2],img_enc.shape[-1]]
         self.img_token_len=token_num
         z = rearrange(img_enc, 'b c h w -> b h w c').contiguous()
         vid_token= z.view(z.shape[1]*z.shape[2],z.shape[0], self.embed_dim)

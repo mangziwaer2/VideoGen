@@ -15,24 +15,19 @@ cap=cv2.VideoCapture(vid_path)
 
 success,img=cap.read()
 img=torch.Tensor(img).permute(2,0,1).unsqueeze(0)
+print("input_shape:",img.shape)
 text=tokenizer.encode(text)
 text=torch.LongTensor(text)
 
 text_token,vid_token,_=comp_model.encode(text,img)
 
-print("text:",text_token.shape)
-print("vid:",vid_token.shape)
-
 img,new_vid_token,mf=comp_model.decode(text_token,vid_token)
-print("img:",img.shape)
-print("new_vid:",new_vid_token.shape)
-print(mf)
 
 frame_idx=0
 while True:
     frame_idx+=1
 
     img,vid_token,mf=comp_model.decode(text_token,vid_token)
-
-    print(frame_idx)
-    print(vid_token.shape)
+    img=img[0].permute(1,2,0).detach().cpu().numpy()
+    cv2.imshow("vid",img)
+    cv2.waitKey(30)
