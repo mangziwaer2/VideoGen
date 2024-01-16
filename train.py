@@ -46,8 +46,8 @@ model=CompletionModel(tokenizer,embed_dim=512,max_len=2048).to(device)
 vf_criterion=nn.CrossEntropyLoss()
 loss_fn=vqperceptual.VQLPIPSWithDiscriminator(device=device)
 
-if(len(test_loader)/2)<1000:
-    loss_fn.discriminator_iter_start=len(test_loader)//2
+if(len(train_loader)/2)<1000:
+    loss_fn.discriminator_iter_start=len(train_loader)//2
 
 print("discriminator_iter_start:",loss_fn.discriminator_iter_start)
 
@@ -98,6 +98,7 @@ for e in range(epoch):
 
         video_names=video_names[:30]
         frame_length=30
+        loss_disc=None
         #已处理第0帧
         for frame_idx in range(len(video_names)):#当前帧状态valid_frame，1为有效，0为无效
             frame_idx+=1
@@ -121,8 +122,8 @@ for e in range(epoch):
                                                last_layer=model.vqmodel.get_last_layer(), split="train")
 
             current_total_losses_ae.append(loss_ae)
-            if loss_disc!=0:
-                current_total_losses_disc.append(loss_disc)
+
+            current_total_losses_disc.append(loss_disc)
 
             if step_update:
                 optimizer_ae.zero_grad()
@@ -156,6 +157,7 @@ for e in range(epoch):
     total_losses_ae=[]
     total_losses_disc=[]
     img=None
+    loss_disc=None
     for i,(description,video_path) in enumerate(test_loader):
         frame_idx=0
         text=tokenizer.encode(description)
