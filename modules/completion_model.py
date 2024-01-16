@@ -14,7 +14,7 @@ class CompletionModel(nn.Module):
         self.text_encoder=TextEncoder(tokenizer=tokenizer,embed_dim=embed_dim,max_len=max_len,dim=[1,1,2])
         self.vid_model=VideoModel(embed_dim=embed_dim,max_len=max_len,enc_dim=[1,1,2],dec_dim=[2,1,1])
         self.vqmodel=VQModel(n_embed=8192,embed_dim=embed_dim)
-        self.next_state_model=MLP(embed_dim=embed_dim*self.vid_model.enc_dim[-1], num_classes=2)
+        self.current_state_model=MLP(embed_dim=embed_dim * self.vid_model.enc_dim[-1], num_classes=2)
 
         self.img_token_len=0
         self.img_token_shape=None
@@ -34,7 +34,7 @@ class CompletionModel(nn.Module):
         SPAN_token = self.text_encoder.embedding.weight[self.text_encoder.tokenizer.dictionary.token2id["<SPAN>"]].unsqueeze(0).repeat(vid_token.shape[1],1).unsqueeze(0)
         vid_token_SPAN=torch.cat([vid_token,SPAN_token],dim=0)
         token=self.vid_model.encode(text_token,vid_token_SPAN,self.img_token_len)
-        mf=self.next_state_model(token)
+        valid_frame=self.current_state_model(token)
         new_token=token[-self.img_token_len:]
         new_token=self.vid_model.decode(new_token)
         img_token=new_token.view(self.img_token_shape[0],self.img_token_shape[1],new_token.shape[1],self.embed_dim)#h w b c
@@ -48,7 +48,7 @@ class CompletionModel(nn.Module):
             temp=temp.detach()
             del temp
 
-        return img,new_vid_token,mf
+        return img,new_vid_token,valid_frame
 
 if __name__ == '__main__':
     c_model=CompletionModel()

@@ -32,17 +32,17 @@ def vanilla_d_loss(logits_real, logits_fake):
 
 
 class VQLPIPSWithDiscriminator(nn.Module):
-    def __init__(self, disc_start=1000, codebook_weight=1.0, pixelloss_weight=1.0,mf_weight=1.0,
+    def __init__(self, disc_start=1000, codebook_weight=1.0, pixelloss_weight=1.0, vf_weight=1.0,
                  disc_num_layers=3, disc_in_channels=3, disc_factor=1.0, disc_weight=0.8,
                  perceptual_weight=1.0, use_actnorm=False, disc_conditional=False,
-                 disc_ndf=64, disc_loss="hinge",device="cuda"):
+                 disc_ndf=64, disc_loss="hinge", device="cuda"):
         super().__init__()
         assert disc_loss in ["hinge", "vanilla"]
         self.codebook_weight = codebook_weight
         self.pixel_weight = pixelloss_weight
         self.perceptual_loss = LPIPS().eval().to(device)
         self.perceptual_weight = perceptual_weight
-        self.mf_weight=mf_weight
+        self.mf_weight=vf_weight
 
         self.discriminator = NLayerDiscriminator(input_nc=disc_in_channels,
                                                  n_layers=disc_num_layers,
@@ -74,7 +74,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
         d_weight = d_weight * self.discriminator_weight
         return d_weight
 
-    def forward(self, codebook_loss, inputs, reconstructions,mf_loss, optimizer_idx,
+    def forward(self, codebook_loss, inputs, reconstructions, vf_loss, optimizer_idx,
                 global_step, last_layer=None, cond=None, split="train"):
         rec_loss = torch.abs(inputs.contiguous() - reconstructions.contiguous())
         if self.perceptual_weight > 0:
@@ -105,7 +105,7 @@ class VQLPIPSWithDiscriminator(nn.Module):
                 d_weight = torch.tensor(0.0)
 
             disc_factor = adopt_weight(self.disc_factor, global_step, threshold=self.discriminator_iter_start)
-            loss = nll_loss + d_weight * disc_factor * g_loss + self.codebook_weight * codebook_loss.mean()+self.mf_weight*mf_loss.mean()
+            loss = nll_loss + d_weight * disc_factor * g_loss + self.codebook_weight * codebook_loss.mean() + self.mf_weight * vf_loss.mean()
 
             log = {"{}/total_loss".format(split): loss.clone().detach().mean(),
                    "{}/quant_loss".format(split): codebook_loss.detach().mean(),

@@ -11,7 +11,7 @@ class Dataset(torch.utils.data.Dataset):
 
         video_names=os.listdir(dataset_path_root)
         total_video_num=len(video_names)
-        train_pos=int(total_video_num*0.8)+1
+        train_pos=int(total_video_num*0.8)
 
         start=0
         end=0
