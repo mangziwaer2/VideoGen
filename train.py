@@ -158,6 +158,7 @@ for e in range(epoch):
     total_losses_disc=[]
     img=None
     loss_disc=None
+
     for i,(description,video_path) in enumerate(test_loader):
         frame_idx=0
         text=tokenizer.encode(description)
@@ -175,6 +176,9 @@ for e in range(epoch):
 
         current_total_losses_ae=[]
         current_total_losses_disc=[]
+
+        video_names=video_names[:30]
+        frame_length=30
         # 已处理第0帧
         for frame_idx in range(len(video_names)):  # 当前帧状态valid_frame，1为有效，0为无效
             frame_idx+=1
