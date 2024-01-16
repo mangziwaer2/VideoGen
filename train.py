@@ -22,6 +22,7 @@ dictionary_path=args.dictionary_path
 
 print("\nargs:")
 print("------------------------------------------------------------------\n")
+print("epoch:",epoch)
 print("memory_length:",memory_length)
 print("dataset_path:",dataset_path_root)
 print("dictionary_path:",dictionary_path)
@@ -83,7 +84,7 @@ for e in range(epoch):
         frame_idx=0
         video_path=video_path[0]
         video_names=os.listdir(video_path)
-        frame_length=len(video_names)//2
+        frame_length=len(video_names)
         video_path_sub=os.path.join(video_path,video_names[0])
         img=cv2.imread(video_path_sub)
         img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
@@ -95,6 +96,8 @@ for e in range(epoch):
         current_total_losses_ae=[]
         current_total_losses_disc=[]
 
+        video_names=video_names[:30]
+        frame_length=30
         #已处理第0帧
         for frame_idx in range(len(video_names)):#当前帧状态valid_frame，1为有效，0为无效
             frame_idx+=1
