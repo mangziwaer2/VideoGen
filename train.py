@@ -226,4 +226,4 @@ for e in range(epoch):
 
     if(total_losses_ae<min_loss):
         min_loss=total_losses_ae
-        torch.save("./models/best_model.ckpt")
+        torch.save(model.state_dict(),"./models/best_model.ckpt")
