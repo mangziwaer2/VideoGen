@@ -182,7 +182,7 @@ for e in range(epoch):
         # 已处理第0帧
         for frame_idx in range(len(video_names)):  # 当前帧状态valid_frame，1为有效，0为无效
             frame_idx+=1
-            video_path_sub = os.path.join(video_path, video_names[frame_idx])
+
             if frame_idx==frame_length:#无效帧
                 valid_frame = torch.eye(2)[0].unsqueeze(0).repeat(batch_size, 1).to(device)
                 img=torch.zeros_like(img)
