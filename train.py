@@ -13,7 +13,7 @@ from tools.parser import args
 
 epoch=args.epoch
 batch_size=1
-lr=1e-3
+lr=args.lr
 
 memory_length=args.memory_length
 
@@ -24,6 +24,7 @@ limit_frame_length=args.limit_frame_length
 print("\nargs:")
 print("------------------------------------------------------------------\n")
 print(f"epoch:{epoch}\n"
+      f"lr:{lr}\n"
       f"limit_frame_length:{limit_frame_length}\n"
       f"memory_length:{memory_length}\n"
       f"dataset_path:{dataset_path_root}\n"
@@ -73,6 +74,7 @@ optimizer_disc = torch.optim.Adam(loss_fn.discriminator.parameters(),
 schduler_ae=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_ae, mode='min', factor=0.1, patience=2)
 schduler_disc=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_disc, mode='min', factor=0.1, patience=2)
 
+min_loss=100000
 for e in range(epoch):
 
     if e>=epoch/2:
@@ -220,4 +222,8 @@ for e in range(epoch):
 
     schduler_disc.step(total_losses_disc)
 
-    print(F"{e}/{epoch},eval_loss_ae:{total_losses_ae},eval_loss_disc:{total_losses_disc}")
+    print(F"\t\teval_loss_ae:{total_losses_ae},eval_loss_disc:{total_losses_disc}")
+
+    if(total_losses_ae<min_loss):
+        min_loss=total_losses_ae
+        torch.save("./models/best_model.ckpt")
