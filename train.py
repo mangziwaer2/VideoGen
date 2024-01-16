@@ -19,13 +19,16 @@ memory_length=args.memory_length
 
 dataset_path_root=args.dataset_path
 dictionary_path=args.dictionary_path
+limit_frame_length=args.limit_frame_length
 
 print("\nargs:")
 print("------------------------------------------------------------------\n")
-print("epoch:",epoch)
-print("memory_length:",memory_length)
-print("dataset_path:",dataset_path_root)
-print("dictionary_path:",dictionary_path)
+print(f"epoch:{epoch}\n"
+      f"limit_frame_length:{limit_frame_length}\n"
+      f"memory_length:{memory_length}\n"
+      f"dataset_path:{dataset_path_root}\n"
+      f"dictionary_path:{dictionary_path}"
+      )
 print("\n------------------------------------------------------------------\n")
 
 
@@ -96,8 +99,8 @@ for e in range(epoch):
         current_total_losses_ae=[]
         current_total_losses_disc=[]
 
-        video_names=video_names[:30]
-        frame_length=30
+        frame_length = min(limit_frame_length,frame_length)
+        video_names=video_names[:frame_length]
         loss_disc=None
         #已处理第0帧
         for frame_idx in range(len(video_names)):#当前帧状态valid_frame，1为有效，0为无效
@@ -177,8 +180,8 @@ for e in range(epoch):
         current_total_losses_ae=[]
         current_total_losses_disc=[]
 
-        video_names=video_names[:30]
-        frame_length=30
+        frame_length = min(limit_frame_length,frame_length)
+        video_names=video_names[:frame_length]
         # 已处理第0帧
         for frame_idx in range(len(video_names)):  # 当前帧状态valid_frame，1为有效，0为无效
             frame_idx+=1
