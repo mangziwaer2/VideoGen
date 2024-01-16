@@ -50,8 +50,8 @@ model=CompletionModel(tokenizer,embed_dim=512,max_len=2048).to(device)
 vf_criterion=nn.CrossEntropyLoss()
 loss_fn=vqperceptual.VQLPIPSWithDiscriminator(device=device)
 
-if(len(train_loader)/2)<1000:
-    loss_fn.discriminator_iter_start=len(train_loader)//2
+if(len(test_loader)/2)<1000:
+    loss_fn.discriminator_iter_start=len(test_loader)//2
 
 print("discriminator_iter_start:",loss_fn.discriminator_iter_start)
 
@@ -156,7 +156,7 @@ for e in range(epoch):
 
     print(F"{e}/{epoch},train_loss_ae:{(sum(total_losses_ae) / len(total_losses_ae))},train_loss_disc:{(sum(total_losses_disc) / len(total_losses_disc))}")
 
-    torch.save(model.state_dict(), f"./models/model_{e%4}.ckpt")
+    # torch.save(model.state_dict(), f"./models/model_{e%4}.ckpt")
 
     model.eval()
     total_losses_ae=[]
@@ -224,6 +224,6 @@ for e in range(epoch):
 
     print(F"\t\teval_loss_ae:{total_losses_ae},eval_loss_disc:{total_losses_disc}")
 
-    if(total_losses_ae<min_loss):
-        min_loss=total_losses_ae
+    if(total_losses_disc<min_loss):
+        min_loss=total_losses_disc
         torch.save(model.state_dict(),"./models/best_model.ckpt")
