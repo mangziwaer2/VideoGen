@@ -9,9 +9,11 @@ from modules.tokenizer import Tokenizer
 from dataset import Dataset
 from modules.VQGAN.modules.losses import vqperceptual
 
-epoch=100
+epoch=1000
 batch_size=1
 lr=1e-3
+
+memory_length=8
 
 dataset_path_root="datasets/vid"
 dictionary_path="models/dictionary.gensim"
@@ -29,10 +31,15 @@ tokenizer=Tokenizer(dictionary_path=dictionary_path)
 
 model=CompletionModel(tokenizer,embed_dim=512,max_len=2048).to(device)
 
+
 mf_criterion=nn.CrossEntropyLoss()
 loss_fn=vqperceptual.VQLPIPSWithDiscriminator(device=device)
 
-optimizer_idx=-1
+if(len(test_loader)/2)<1000:
+    loss_fn.discriminator_iter_start=len(test_loader)//2
+
+print("discriminator_iter_start:",loss_fn.discriminator_iter_start)
+
 step_update=False
 
 optimizer_ae = torch.optim.Adam(list(model.vqmodel.encoder.parameters())+
@@ -49,24 +56,24 @@ optimizer_ae = torch.optim.Adam(list(model.vqmodel.encoder.parameters())+
 optimizer_disc = torch.optim.Adam(loss_fn.discriminator.parameters(),
                             lr=lr, betas=(0.5, 0.9))
 
-schduler_ae=scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_ae, mode='min', factor=0.1, patience=2)
-schduler_disc=scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_disc, mode='min', factor=0.1, patience=2)
+schduler_ae=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_ae, mode='min', factor=0.1, patience=2)
+schduler_disc=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_disc, mode='min', factor=0.1, patience=2)
 
 for e in range(epoch):
-    optimizer_idx+=1
-    optimizer_idx%=2
-    if e>=epoch/2:
-        step_update=False
 
-    loss_ae_ave=0
-    loss_disc_ave=0
+    if e>=epoch/2:
+        step_update=True
+
+    total_losses_ae=[]
+    total_losses_disc=[]
     model.train()
     for i,(description,video_path) in enumerate(train_loader):
         text=tokenizer.encode(description)
         frame_idx=0
         video_path=video_path[0]
-        frame_length=len(os.listdir(video_path))//2
-        video_path_sub=os.path.join(video_path,F"{frame_idx:05d}.png")
+        video_names=os.listdir(video_path)
+        frame_length=len(video_names)//2
+        video_path_sub=os.path.join(video_path,video_names[frame_idx])
         img=cv2.imread(video_path_sub)
         img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
         text=torch.LongTensor(text).to(device)
@@ -74,11 +81,11 @@ for e in range(epoch):
 
         text_token,vid_token,qloss=model.encode(text,img)
 
-        total_losses_ae=[]
-        total_losses_disc=[]
+        current_total_losses_ae=[]
+        current_total_losses_disc=[]
         while True: #计算处理视频最后一帧时mf为0
             frame_idx+=1
-            video_path_sub = os.path.join(video_path, F"{frame_idx:05d}.png")
+            video_path_sub=os.path.join(video_path,video_names[frame_idx])
 
             if frame_idx==frame_length-1:
                 mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
@@ -87,9 +94,9 @@ for e in range(epoch):
                 break
 
             img = cv2.imread(video_path_sub)
-            img=cv2.resize(img,(128,64))
             img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
-            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token,memory_length=8)
+            pred_img,vid_token,pred_mf=model.decode(text_token,vid_token,memory_length=memory_length)
+            img=torch.resize_as_(img,pred_img)
 
             mf_loss=mf_criterion(mf,pred_mf)
 
@@ -99,9 +106,9 @@ for e in range(epoch):
             loss_disc, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,1, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            total_losses_ae.append(loss_ae)
+            current_total_losses_ae.append(loss_ae)
             if loss_disc!=0:
-                total_losses_disc.append(loss_disc)
+                current_total_losses_disc.append(loss_disc)
 
             if step_update:
                 optimizer_ae.zero_grad()
@@ -113,11 +120,11 @@ for e in range(epoch):
                 optimizer_disc.step()
 
         if not step_update:
-            loss_ae=sum(total_losses_ae)/len(total_losses_ae)
-            loss_ae_ave+=loss_ae.item()
-            if len(total_losses_disc)!=0:
-                loss_disc=sum(total_losses_disc)/len(total_losses_disc)
-                loss_disc_ave+=loss_disc.item()
+            loss_ae= sum(current_total_losses_ae) / len(current_total_losses_ae)
+            total_losses_ae.append(loss_ae.item())
+
+            loss_disc= sum(current_total_losses_disc) / len(current_total_losses_disc)
+            total_losses_disc.append(loss_disc.item())
 
             optimizer_ae.zero_grad()
             loss_ae.backward()
@@ -127,41 +134,43 @@ for e in range(epoch):
             loss_disc.backward()
             optimizer_disc.step()
 
-    print(F"{e}/{epoch},train_loss_ae:{loss_ae_ave/len(train_loader)},train_loss_disc:{loss_disc_ave/len(train_loader)}")
+    print(F"{e}/{epoch},train_loss_ae:{(sum(total_losses_ae) / len(total_losses_ae))},train_loss_disc:{(sum(total_losses_disc) / len(total_losses_disc))}")
 
     torch.save(model.state_dict(), f"./models/model_{e%4}.ckpt")
 
     model.eval()
-    loss_ae_ave=0
-    loss_disc_ave=0
+    total_losses_ae=[]
+    total_losses_disc=[]
     for i,(description,video_path) in enumerate(test_loader):
+        frame_idx=0
         text=tokenizer.encode(description)
-        cap=cv2.VideoCapture(video_path[0])
-        frame_length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        video_path=video_path[0]
+        video_names=os.listdir(video_path)
+        frame_length = len(video_names)
+        video_path_sub=os.path.join(video_path,video_names[frame_idx])
+        img=cv2.imread(video_path_sub)
 
-        success, img = cap.read()
         img=torch.Tensor(img).permute(2,0,1).unsqueeze(0).to(device)
         text=torch.LongTensor(text).to(device)
         mf=torch.eye(2)[1].unsqueeze(0).repeat(batch_size,1).to(device)
 
         text_token,vid_token,qloss=model.encode(text,img)
 
-        total_losses_ae=[]
-        total_losses_disc=[]
-        frame_idx=0
+        current_total_losses_ae=[]
+        current_total_losses_disc=[]
         while True: #计算处理视频最后一帧时mf为0
             frame_idx+=1
+            video_path_sub = os.path.join(video_path, video_names[frame_idx])
             if frame_idx==frame_length-1:
                 mf = torch.eye(2)[0].unsqueeze(0).repeat(batch_size,1).to(device)
 
-            success,img=cap.read()
-            if not success:
+            if frame_idx==frame_length:
                 break
 
-            img=cv2.resize(img,(64,128))
+            img = cv2.imread(video_path_sub)
             img = torch.Tensor(img).permute(2, 0, 1).unsqueeze(0).to(device)
             pred_img,vid_token,pred_mf=model.decode(text_token,vid_token)
-
+            img=torch.resize_as_(img,pred_img)
             mf_loss=mf_criterion(mf,pred_mf)
 
             loss_ae, log_dict_ae = loss_fn(qloss, img, pred_img,mf_loss, 0, i,
@@ -171,19 +180,19 @@ for e in range(epoch):
             loss_disc, log_dict_disc = loss_fn(qloss, img, pred_img, mf_loss,1, i,
                                                 last_layer=model.vqmodel.get_last_layer(), split="train")
 
-            total_losses_ae.append(loss_ae)
-            total_losses_disc.append(loss_disc)
+            current_total_losses_ae.append(loss_ae)
+            current_total_losses_disc.append(loss_disc)
 
-        loss_ae_ave+=sum(total_losses_ae)/len(total_losses_ae)
-        loss_disc_ave+=sum(total_losses_disc)/len(total_losses_disc)
+        total_losses_ae.append(sum(current_total_losses_ae) / len(current_total_losses_ae))
+        total_losses_disc.append(sum(current_total_losses_disc) / len(current_total_losses_disc))
 
-    # loss_ave/=len(test_loader)
-    #
-    # if optimizer_idx==0:
-    #     schduler_ae.step(loss_ave)
-    #
-    #
-    # if optimizer_idx==1:
-    #     schduler_disc.step(loss_ave)
-    #
-    # print(F"{e}/{epoch},eval_loss:{loss_ave}")
+
+    total_losses_ae=sum(total_losses_ae)/len(total_losses_ae)
+
+    total_losses_disc=sum(total_losses_disc)/len(total_losses_disc)
+
+    schduler_ae.step(total_losses_ae)
+
+    schduler_disc.step(total_losses_disc)
+
+    print(F"{e}/{epoch},eval_loss_ae:{total_losses_ae},eval_loss_disc:{total_losses_disc}")
